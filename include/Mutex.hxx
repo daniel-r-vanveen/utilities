@@ -62,11 +62,13 @@ class Mutex {
     };
 
 private:
-    friend class Condition;
     Mutex(const Mutex&);
     Mutex& operator=(const Mutex&);
 
-    pthread_mutex_t         mMutex;
+    friend class Condition;
+    pthread_mutex_t* getMutex();
+
+    pthread_mutex_t mMutex;
 };
 
 }  // namespace utilities

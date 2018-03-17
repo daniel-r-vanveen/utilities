@@ -38,6 +38,10 @@ int Mutex::tryLock() {
     return pthread_mutex_trylock(&mMutex);
 }
 
+pthread_mutex_t* Mutex::getMutex() {
+    return &mMutex;
+}
+
 Mutex::Lock::Lock(Mutex& mutex) : mLock(mutex) {
     mLock.lock();
 }
