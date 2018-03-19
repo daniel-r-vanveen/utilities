@@ -17,10 +17,10 @@
 #ifndef MUTEX_H
 #define MUTEX_H
 
-namespace utilities {
-
 // Support for UNIX platforms only.
 #include <pthread.h>
+
+namespace utilities {
 
 class Condition;
 
@@ -30,6 +30,7 @@ class Condition;
  * Implementation does not currently support Mutex sharing across processes.
  */
 class Mutex {
+public:
     Mutex();
     ~Mutex();
 

@@ -17,10 +17,10 @@
 #ifndef CONDITION_H
 #define CONDITION_H
 
-namespace utilities {
-
 // Support for UNIX platforms only.
 #include <pthread.h>
+
+namespace utilities {
 
 class Mutex;
 
@@ -28,6 +28,7 @@ class Mutex;
  * pthread based Condition implementation.
  */
 class Condition {
+public:
     Condition();
     ~Condition();
 
