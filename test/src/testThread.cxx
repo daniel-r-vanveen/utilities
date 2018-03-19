@@ -16,12 +16,19 @@
 
 #include <gtest/gtest.h>
 
+#include <mutex>
+#include <thread>
+
 #include "Condition.hxx"
 #include "Mutex.hxx"
 #include "Thread.hxx"
 #include "TimedTask.hxx"
 
 namespace utilities {
+
+#define SHORT_TIMEOUT_MS 50
+
+typedef std::lock_guard<std::mutex> Lock;
 
 /* Mutex tests */
 TEST(MutexTest, MutexBasic) {
@@ -31,7 +38,7 @@ TEST(MutexTest, MutexBasic) {
 }
 
 TEST(MutexTest, MutexLock) {
-    EXPECT_TIMEOUT(std::chrono::milliseconds(10), []() {
+    EXPECT_TIMEOUT(std::chrono::milliseconds(SHORT_TIMEOUT_MS), []() {
         Mutex mutex;
         Mutex::Lock l1(mutex);
         Mutex::Lock l2(mutex);
@@ -50,6 +57,84 @@ TEST(MutexTest, TryLock) {
 }
 
 /* Condition tests */
+TEST(ConditionTest, ConditionBasic) {
+    std::mutex m;
+    Lock l(m);
+    Condition condition;
+}
+
+TEST(ConditionTest, ConditionWait) {
+    EXPECT_TIMEOUT(std::chrono::milliseconds(SHORT_TIMEOUT_MS), []() {
+        Mutex m;
+        Condition c;
+        m.lock();
+        ASSERT_EQ(c.wait(m), 0);
+    });
+}
+
+TEST(ConditionTest, Signal) {
+    EXPECT_COMPLETE(std::chrono::milliseconds(SHORT_TIMEOUT_MS), []() {
+        Mutex m;
+        Condition c;
+
+        const int numThreads = 5;
+        int blockedThreadCount = 0;
+        bool onThreadWoken = false;
+
+        for (int i = 0; i < numThreads; ++i) {
+            std::thread([&]() {
+                Mutex::Lock l(m);
+                blockedThreadCount++;
+                c.wait(m);
+                blockedThreadCount--;
+                // This will only be modified by one thread at a time so does not need a mutex.
+                onThreadWoken = true;
+            }).detach();
+        }
+
+        for (int i = 1; i < numThreads+1; ++i) {
+            {
+                Mutex::Lock l(m);
+                c.signal();
+            }
+            while (!onThreadWoken) {
+                continue;
+            }
+            onThreadWoken = false;
+            ASSERT_EQ(blockedThreadCount, (numThreads - i));
+        }
+    });
+}
+
+TEST(ConditionTest, Broadcast) {
+    EXPECT_COMPLETE(std::chrono::milliseconds(SHORT_TIMEOUT_MS), []() {
+        Mutex m;
+        Condition c;
+
+        const int numThreads = 5;
+        int blockedThreadCount = 0;
+
+        for (int i = 0; i < numThreads; ++i) {
+            std::thread([&]() {
+                Mutex::Lock l(m);
+                blockedThreadCount++;
+                c.wait(m);
+                blockedThreadCount--;
+            }).detach();
+        }
+
+        // Wait for all threads to be waiting.
+        while (blockedThreadCount != numThreads) continue;
+        {   // Scope for lock.
+            Mutex::Lock l(m);
+            c.broadcast();
+        }
+        // Expect a timed out if broadcast fails.
+        while (blockedThreadCount) continue;
+    });
+}
+
+// signal, broadcast, wait, timedWait
 
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);
